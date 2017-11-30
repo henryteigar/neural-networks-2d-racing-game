@@ -1,7 +1,9 @@
 # Game settings
-width = 800
-height = 600
-caption = "2d Racing Game"
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+CAPTION = "2D Racing Game"
+CAR_LENGTH = 35
+CAR_WIDTH = 20
 
 # Colors
 WHITE = (255, 255, 255)
