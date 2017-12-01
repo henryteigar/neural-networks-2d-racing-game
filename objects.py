@@ -41,19 +41,22 @@ class Info:
         self.car = car
         self.font = pygame.font.SysFont("monospace", 18)
         self.sensors = sensors
+        self.crashes = 0
 
     def blit(self):
         speed_label = self.font.render("Speed: " + str(self.car.speed), 1, (255, 255, 255))
         wheel_label = self.font.render("Wheel: " + str(self.car.wheel), 1, (255, 255, 255))
         direction_label = self.font.render("Direction: " + str(self.car.dir), 1, (255, 255, 255))
+        crashes_label = self.font.render("Crashes: " + str(self.crashes), 1, (255, 0, 0))
         self.screen.blit(speed_label, (SCREEN_WIDTH - 180, 20))
         self.screen.blit(wheel_label, (SCREEN_WIDTH - 180, 40))
         self.screen.blit(direction_label, (SCREEN_WIDTH - 180, 60))
+        self.screen.blit(crashes_label, (SCREEN_WIDTH - 180, 80))
 
         for i, sensor in enumerate(self.sensors):
             label_txt = "Sensor{0}: {1}".format(i, sensor.measurement)
             label = self.font.render(label_txt, 1, WHITE)
-            self.screen.blit(label, (180, i*20))
+            self.screen.blit(label, (20, 20 + i*20))
 
 
 class Sensor:
