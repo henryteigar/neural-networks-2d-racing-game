@@ -1,5 +1,4 @@
 import pygame
-
 from objects import *
 from conf import *
 
@@ -10,10 +9,10 @@ clock = pygame.time.Clock()
 game_ended = False
 
 car = Car(screen, 0, SCREEN_WIDTH / 2 - CAR_WIDTH / 2, SCREEN_HEIGHT - 80)
-car.speed = 0
-info = Info(screen, car)
+car.speed = 3
 circuit = Circuit(screen)
 sensors = Sensors(screen, car, circuit)
+info = Info(screen, car, sensors.sensors)
 
 
 def detect_collision():

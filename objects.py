@@ -36,10 +36,11 @@ class Car:
         self.screen.blit(self.img, (self.x, self.y))
 
 class Info:
-    def __init__(self, screen, car):
+    def __init__(self, screen, car, sensors):
         self.screen = screen
         self.car = car
         self.font = pygame.font.SysFont("monospace", 18)
+        self.sensors = sensors
 
     def blit(self):
         speed_label = self.font.render("Speed: " + str(self.car.speed), 1, (255, 255, 255))
@@ -48,6 +49,12 @@ class Info:
         self.screen.blit(speed_label, (SCREEN_WIDTH - 180, 20))
         self.screen.blit(wheel_label, (SCREEN_WIDTH - 180, 40))
         self.screen.blit(direction_label, (SCREEN_WIDTH - 180, 60))
+
+        for i, sensor in enumerate(self.sensors):
+            label_txt = "Sensor{0}: {1}".format(i, sensor.measurement)
+            label = self.font.render(label_txt, 1, WHITE)
+            self.screen.blit(label, (180, i*20))
+
 
 class Sensor:
     def __init__(self, screen, deg, car, circuit):
@@ -114,7 +121,7 @@ class Sensors:
         angle_range = (self.nr_of_sensors - 1) * self.density
         start_angle = -angle_range // 2
 
-        for deg in range(start_angle, start_angle + angle_range + 1, self.density):
+        for deg in range(start_angle + angle_range, start_angle - 1, -self.density):
             sensors.append(Sensor(self.screen, deg, self.car, self.circuit))
         return sensors
 
@@ -123,65 +130,6 @@ class Sensors:
             sensor.measure()
             sensor.blit()
 
-
-        # self.car_center_x = None
-        # self.car_center_y = None
-        #
-        # self.min_angle = -180
-
-    # def measure_distanes(self):
-    #     self.car_center_x = self.car.x + self.car.img_rect.center[0]
-    #     self.car_center_y = self.car.y + self.car.img_rect.center[1]
-    #     initial_len = 0
-
-        # for i in range(1500):
-        #     x2 = self.car_center_x + self.dir_car_x * initial_len
-        #     y2 = self.car_center_y - self.dir_car_y * initial_len
-        #     line_surface = pygame.Surface((5, 5), pygame.SRCALPHA)
-        #     line_rect = line_surface.get_rect()
-        #     line_rect.topleft = x2, y2
-        #     line_surface.fill(GREEN)
-        #     if self.circuit.img_mask.overlap(pygame.mask.from_surface(line_surface),
-        #                                      (int(line_rect[0]), int(line_rect[1]))) is not None:
-        #         break
-        #     self.screen.blit(line_surface, line_rect.topleft)
-        #     initial_len += 2
-
-        #self.sensors = [5,5,5,5,5,5,5]
-
-
-
-    #def blit(self):
-
-
-        #self.measure_distanes()
-
-        #range = abs(self.min_angle * 2)
-
-
-
-        #for sensor in self.sensors:
-        #    pygame.draw.line(self.screen, GREEN, (self.car_center_x, self.car_center_y))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        #self.screen.blit(line_surface, line_rect.topleft)
-
-
-        # if circuit.img_mask.overlap(car.img_mask, (int(car.x), int(car.y))) is not None:
-        #     car.reset()
 
 class Circuit:
     def __init__(self, screen):
