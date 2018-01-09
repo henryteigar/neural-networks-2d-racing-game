@@ -40,12 +40,12 @@ if resume and os.path.getsize('model.p') > 0:
 
 def prepro(image):
     """ prepro 210x160x3 uint8 frame into 6400 (80x80) 1D float vector """
-    image = image[:-19, 15:-15, 1]
-
-    image = np.delete(image, np.s_[::3], 0)
-    image = np.delete(image, np.s_[::4], 1)
-    image[image > 200] = 255
-    image[(image > 100) & (image < 115)] = 150
+    image = image[:-16, 16:-16, 1]
+    #print(image.shape)
+    #image = np.delete(image, np.s_[::3], 0)
+    #image = np.delete(image, np.s_[::4], 1)
+    #image[image > 200] = 255
+    #image[(image > 100) & (image < 115)] = 150
     #image = image.astype(np.float).ravel()
     #print(image.shape)
     return image
@@ -73,9 +73,14 @@ def discount_rewards(r):
 def build_model():
     model1 = Sequential()
    # model1.add(Reshape((51, 49), input_shape=(51, 49)))
-    model1.add(Conv2D(16, 19, strides=2, padding="valid", activation="relu", input_shape=(51, 49, 1)))
+    model1.add(Conv2D(32, 8, strides=4, padding="valid", activation="relu", input_shape=(80, 64, 1)))
+    #model1.add(Flatten())
+    model1.add(Conv2D(64, 4, strides=2, padding="valid", activation="relu"))
+    #model1.add(Flatten())
+    model1.add(Conv2D(64, 3, strides=1, padding="valid", activation="relu"))
     model1.add(Flatten())
-    model1.add(Dense(4, activation="softmax"))
+    model1.add(Dense(100, activation="relu"))
+    model1.add(Dense(2, activation="softmax"))
     model1.compile(optimizer=RMSprop(lr=learning_rate, decay=decay_rate, epsilon=epsilon), metrics=["accuracy"],
                   loss="categorical_crossentropy")
     return model1
@@ -92,14 +97,16 @@ def build_model():
 
 # env = gym.make("Pong-v0")
 env = gym.make("CarRacing-v0")
+#env = gym.make("CartPole-v0")
 observation = env.reset()
 prev_x = None  # used in computing the difference frame
-states, gradients, actions, rewards, probs = [], [], [], [], []
+states, actions, rewards, probs = [], [], [], []
 running_reward = None
 reward_sum = 0
 episode_number = 0
 
-possible_actions = [[0.5, 0, 0], [-0.5, 0, 0], [0, 0, 0.5], [0, 0.5, 0]]
+possible_actions = [[0.5, 0.3, 0], [-0.5, 0.3, 0]]
+#possible_actions = [-1, 1]
 
 maximum_reward_sum = 0
 model = build_model()
@@ -111,18 +118,19 @@ while True:
 
     # preprocess the observation, set input to network to be difference image
     cur_x = prepro(observation)
-    x = cur_x - prev_x if prev_x is not None else np.zeros(D)
+    #print(cur_x.shape)
+    x = cur_x - prev_x if prev_x is not None else np.zeros(80*64)
     prev_x = cur_x
-
+    #print(x.shape)
     # forward the policy network and sample an action from the returned probability
     #print(np.array(x).shape)
-    aprob = model.predict(np.reshape(x, (1, 51, 49, 1)), batch_size=batch_size).flatten()
+    aprob = model.predict(np.reshape(x, (1, 80, 64, 1)), batch_size=batch_size).flatten()
     probs.append(aprob)
-
+    #print(aprob)
     prob = aprob / np.sum(aprob)
-
-    action = np.random.choice(4, 1, p=prob)[0]
-
+    #print(prob)
+    action = np.random.choice(2, 1, p=prob)[0]
+    #print(action)
     #action = 2 if np.random.uniform() < aprob else 3  # roll the dice!
     #action_vec = [0.5, 0.5, 0] if action == 2 else [-0.5, 0.5, 0]  # roll the dice!
 
@@ -138,18 +146,28 @@ while True:
 
     reward_sum += reward
 
-    actions = np.zeros([4])
-    actions[action] = 1
-    states.append(x)  # observation
-    gradients.append(actions.astype("float32") - 1)
-    rewards.append(np.clip(reward, -1, 1))  # record reward (has to be done after we call step() to get reward for previous action)
+    as1 = np.zeros([2])
+    as1[action] = 1
+    actions.append(as1)
+    states.append(state)  # observation
+    #gradients.append(actions.astype("float32") - 1)
+    #rewards.append(np.clip(reward, -1, 1))  # record reward (has to be done after we call step() to get reward for previous action)
+    rewards.append(reward)
 
 
-    #if reward_sum > maximum_reward_sum:
-    #    maximum_reward_sum = reward_sum
+
+
+
+
+
+
+
+
+    if reward_sum > maximum_reward_sum:
+        maximum_reward_sum = reward_sum
     #
-    #if maximum_reward_sum - reward_sum > 5:
-    #    done = True
+    if maximum_reward_sum - reward_sum > 5:
+        done = True
 
 
     if done:  # an episode finished
@@ -158,19 +176,28 @@ while True:
 
         # stack together data
 
-        gradients = np.vstack(gradients)
+        #gradients = np.vstack(gradients)
         epdlogp = np.vstack(actions)
         rewards = np.vstack(rewards)
         rewards = discount_rewards(rewards)
-        rewards = rewards / np.std(rewards - np.mean(rewards))
-        gradients *= rewards
+        #rewards = rewards - np.mean(rewards)
+        #print(np.std(rewards))
+
+        advantages = rewards - np.mean(rewards)
+
+        #rewards /= np.std(rewards)
+        #gradients *= rewards
+
+
         X = np.squeeze(np.vstack(states))
-        Y = probs + learning_rate * np.squeeze(np.vstack([gradients]))
+        Y = actions
+        print(X.shape)
+        print(np.array(Y).shape)
 
-        model.train_on_batch(X, Y)
+        model.train_on_batch(np.reshape(X, (1, X.shape[0], X.shape[1], X.shape[2])), Y, sample_weight=advantages)
 
 
-        states, gradients, probs, rewards = [], [], [], []  # reset array memory
+        states, probs, rewards = [], [], []  # reset array memory
 
         # compute the discounted reward backwards through time
         #discounted_epr = discount_rewards(epr)
