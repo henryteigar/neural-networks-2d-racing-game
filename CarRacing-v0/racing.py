@@ -2,10 +2,17 @@ import gym
 import numpy as np
 from PIL import Image
 import random
+from keras.layers import Conv2D, Dense, Input, Activation
 
 
-env = gym.make('CarRacing-v0')
-env.reset()
+H = 200
+batch_size = 10
+learning_rate = 1e-4
+decay_rate = 0.99
+gamma = 0.99
+resume = True
+render = False
+capture_real_image = True
 
 
 
@@ -32,15 +39,38 @@ def save_real_image(image):
     img = Image.fromarray(np.array(img_temp), 'RGB')
     img.save("test.png")
 
+def apply_NN(input):
+    x = Input(shape=(2,2))
+    c1 = Conv2D(16, 8, strides=4, activation="relu")(x)
+    c2 = Conv2D(32, 4, strides=2, activation="relu")(c1)
+    h = Dense(256)(c2)
+    a1 = Activation('softmax')(h)
+    a2 = Activation('relu')(h)
 
+
+D = 45
+#lisa salvestamine
+
+
+
+env = gym.make('CarRacing-v0')
+initial_input = env.reset()
+prev_x = None
+
+running_reward = 0
+reward_sum = 0
+episode_nr = 0
 
 while True:
-    steering = -1 + random.random()*2
-    throttle = random.random()
-    env.render()
-    image, reward, done, info = env.step([0,throttle,0])
-    image = preprocess_image(image)
+
+    if render:
+        env.render()
+
+    current_image = preprocess_image(initial_input)
+    print(current_image.shape)
+    x = current_image - prev_x if prev_x is not None else np.zeros(D)
+    prev_x = current_image
 
 
-    if capture_real_image:
-        save_real_image(image)
+
+
