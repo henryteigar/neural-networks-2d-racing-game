@@ -101,7 +101,6 @@ env = gym.make("CarRacing-v0")
 observation = env.reset()
 prev_x = None  # used in computing the difference frame
 states, actions, rewards, probs = [], [], [], []
-janar  = []
 running_reward = None
 reward_sum = 0
 episode_number = 0
@@ -230,7 +229,6 @@ while True:
 
 
         #print('resetting env. episode reward total was %f. running mean: %f' % (reward_sum, running_reward))
-
 
         if episode_number % 10 == 0: pickle.dump(model, open('model.p', 'wb'))
         reward_sum = 0
