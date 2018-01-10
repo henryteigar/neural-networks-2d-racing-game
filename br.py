@@ -5,6 +5,8 @@ import gym
 import os
 import time
 import keras
+import os.path
+
 
 
 #test2
@@ -18,8 +20,12 @@ render = False
 
 # model initialization
 D = 5832  # input dimensionality: 80x80 grid
+
+if not (os.path.isfile('save.p')):
+    open("save.p", "w+")
+
+
 if resume and os.path.getsize('save.p') > 0:
-    print("yee")
     model = pickle.load(open('save.p', 'rb'))
 else:
     model = {}
@@ -31,14 +37,13 @@ rmsprop_cache = {k: np.zeros_like(v) for k, v in model.items()}  # rmsprop memor
 
 
 def sigmoid(x):
-    return 1.0 / (1.0 + np.exp(-x))  # sigmoid "squashing" function to interval [0,1]
+    return 1.0 / (1.0 + np.exp(-x))
 
 
 def prepro(I):
-    """ prepro 210x160x3 uint8 frame into 6400 (80x80) 1D float vector """
-    I = I[32:193,8:152]  # crop
-    I = I[::2, ::2, 0]  # downsample by factor of 2
-    I[I != 0] = 1  # everything else (paddles, ball) just set to 1
+    I = I[32:193,8:152]
+    I = I[::2, ::2, 0]
+    I[I != 0] = 1
     return I.astype(np.float).ravel()
 
 
@@ -76,7 +81,7 @@ running_reward = None
 reward_sum = 0
 episode_number = 0
 cur_lives = 5
-
+running_rewards = []
 while True:
     env.step(1)
     if render: env.render()
@@ -144,7 +149,13 @@ while True:
 
         running_reward = reward_sum if running_reward is None else running_reward * 0.99 + reward_sum * 0.01
         print('resetting env. episode reward total was %f. running mean: %f' % (reward_sum, running_reward))
+        running_rewards.append(running_reward)
 
+        if (len(running_rewards)) >= 10:
+            with open("history.txt", "a+") as data:
+                data.write(str(episode_number) + ", " + str(np.average(running_rewards)) + ", " + str(time.time()) + "\n")
+
+            running_rewards = []
 
         if episode_number % 10 == 0: pickle.dump(model, open('save.p', 'wb'))
         reward_sum = 0
@@ -152,4 +163,5 @@ while True:
         prev_x = None
 
     if reward != 0:
-        print('ep: {0}: game finished, reward: {1}'.format(episode_number, reward))
+        pass
+        #print('ep: {0}: game finished, reward: {1}'.format(episode_number, reward))
