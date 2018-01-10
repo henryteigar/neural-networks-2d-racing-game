@@ -7,7 +7,7 @@ from keras.models import Sequential
 from keras.optimizers import RMSprop
 from keras.models import load_model
 
-learning_rate = 0.01
+learning_rate = 0.001
 epsilon = 1e-5
 decay_rate = 0.90
 gamma = 0.99  # factor to discount reward
@@ -15,7 +15,7 @@ gamma = 0.99  # factor to discount reward
 resume = False
 render = False
 
-
+# BATCH SIZE ?
 def build_model():
     model = Sequential()
     model.add(Reshape((4,), input_shape=(4, 1)))
@@ -23,7 +23,7 @@ def build_model():
     model.add(Dense(100, activation="tanh"))
     model.add(Dense(25, activation="tanh"))
     model.add(Dense(2, activation="softmax"))
-    model.compile(optimizer=RMSprop(lr=learning_rate, decay=decay_rate, epsilon=epsilon), metrics=["accuracy"],
+    model.compile(optimizer=RMSprop(lr=learning_rate), metrics=["accuracy"],
                    loss="categorical_crossentropy")
     return model
 
@@ -40,13 +40,11 @@ def discount_rewards(r):
     for t in reversed(range(0, r.size)):
         running_add = running_add * gamma + r[t]
         discounted_r[t] = running_add
-
     return discounted_r
 
 
 env = gym.make("CartPole-v0")
 observation = env.reset()
-prev_x = None
 observations, taken_actions, rewards = [], [], []
 running_reward = None
 reward_sum = 0
@@ -57,6 +55,7 @@ possible_actions = [0, 1]
 # For information reasons only
 last_n_scores = []
 last_n_average_scores = []
+prev_x = None  # Miks kasutada/mitte kasutada
 
 while True:
     if render:
