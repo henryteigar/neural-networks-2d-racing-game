@@ -18,7 +18,7 @@ epsilon = 1e-5
 decay_rate = 0.99  # decay factor for RMSProp leaky sum of grad^2
 gamma = 0.99  # discount factor for reward
 resume = True  # resume from previous checkpoint?
-render = True
+render = False
 
 # model initialization
 D = 51*49  # input dimensionality: 80x80 grid
@@ -101,6 +101,7 @@ env = gym.make("CarRacing-v0")
 observation = env.reset()
 prev_x = None  # used in computing the difference frame
 states, actions, rewards, probs = [], [], [], []
+janar  = []
 running_reward = None
 reward_sum = 0
 episode_number = 0
@@ -120,6 +121,7 @@ while True:
     cur_x = prepro(observation)
     #print(cur_x.shape)
     x = cur_x - prev_x if prev_x is not None else np.zeros(80*64)
+
     prev_x = cur_x
     #print(x.shape)
     # forward the policy network and sample an action from the returned probability
@@ -149,6 +151,7 @@ while True:
     as1 = np.zeros([2])
     as1[action] = 1
     actions.append(as1)
+    janar.append(x)
     states.append(state)  # observation
     #gradients.append(actions.astype("float32") - 1)
     #rewards.append(np.clip(reward, -1, 1))  # record reward (has to be done after we call step() to get reward for previous action)
@@ -174,6 +177,7 @@ while True:
         episode_number += 1
         maximum_reward_sum = 0
 
+
         # stack together data
 
         #gradients = np.vstack(gradients)
@@ -189,16 +193,26 @@ while True:
         #gradients *= rewards
 
 
-        X = np.squeeze(np.vstack(states))
+        X = np.array(janar)
         Y = actions
-        print(X.shape)
-        print(np.array(Y).shape)
 
-        model.train_on_batch(np.reshape(X, (1, X.shape[0], X.shape[1], X.shape[2])), Y, sample_weight=advantages)
+        print(X.shape)
+        print(X[0].shape)
+        print(len(X[0]))
+
+        #print(X.shape)
+
+        #print(janar[0])
+        #print(np.array(janar).shape)
+        #print(len(janar[0]))
+
+        #print(np.array(Y).shape)
+
+        model.train_on_batch(np.reshape(X, (len(X), 80, 64, 1)), Y, sample_weight=advantages)
 
 
         states, probs, rewards = [], [], []  # reset array memory
-
+        janar = []
         # compute the discounted reward backwards through time
         #discounted_epr = discount_rewards(epr)
         # standardize the rewards to be unit normal (helps control the gradient estimator variance)
