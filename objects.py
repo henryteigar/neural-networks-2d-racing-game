@@ -24,25 +24,23 @@ class Car(pygame.sprite.Sprite):
         self.x = self.start_x
         self.y = self.start_y
 
-    def update_pos(self):
+    def update_pos(self, dt):
         if (self.wheel > self.max_wheel_pos):
             self.wheel = self.max_wheel_pos
         elif (self.wheel < -self.max_wheel_pos):
             self.wheel = -self.max_wheel_pos
 
 
-        self.dir -= self.wheel * 5 * self.speed
-        self.x += math.cos(math.radians(self.dir)) * self.speed
-        self.y -= math.sin(math.radians(self.dir)) * self.speed
-        print(self.x)
-        print(self.y)
+        self.dir -= self.wheel * 5 * self.speed / 33 * dt
+        self.x += math.cos(math.radians(self.dir)) * self.speed / 33 * dt
+        self.y -= math.sin(math.radians(self.dir)) * self.speed / 33 * dt
 
-    def blit(self, screen):
+    def blit(self, screen, dt):
         self.img = rot_center(self.image, self.dir)
         self.img_mask = pygame.mask.from_surface(self.img)
         self.img_rect = self.img.get_rect()
         screen.blit(self.img, (self.x, self.y))
-
+        self.update_pos(dt)
 
 class Info:
     def __init__(self, car, sensors, screen=None):
@@ -134,13 +132,13 @@ class Sensors:
         start_angle = -angle_range // 2
 
         for deg in range(start_angle + angle_range, start_angle - 1, -self.density):
-            sensors.append(Sensor(self.screen, deg, self.car, self.circuit))
+            sensors.append(Sensor(deg, self.car, self.circuit))
         return sensors
 
     def blit(self):
         for sensor in self.sensors:
             sensor.measure()
-            sensor.blit()
+
 
 
 class Circuit:
