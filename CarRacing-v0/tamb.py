@@ -64,7 +64,7 @@ for i_episode in range(args.episodes):
     observation = env.reset()
     episode_reward = 0
     for t in range(args.max_timesteps):
-        if args.display:
+        if not args.display:
             env.render()
 
         # create inputs for batch size 1
