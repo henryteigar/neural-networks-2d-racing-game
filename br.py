@@ -135,7 +135,7 @@ while True:
         discounted_epr -= np.mean(discounted_epr)
         discounted_epr /= np.std(discounted_epr)
 
-        epdlogp *= discounted_epr # Gradientide läbi korrutamine
+        epdlogp *= discounted_epr
         grad = policy_backward(eph, epdlogp)
         for k in model: grad_buffer[k] += grad[k]
 
