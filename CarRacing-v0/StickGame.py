@@ -11,6 +11,8 @@ from keras.models import Sequential
 from keras.optimizers import RMSprop, Adam
 from keras.models import load_model
 
+
+
 # hyperparameters
 #H = 200  # number of hidden layer neurons
 batch_size = 10  # every how many episodes to do a param update?
@@ -18,20 +20,19 @@ learning_rate = 0.01
 epsilon = 1e-5
 decay_rate = 0.90  # decay factor for RMSProp leaky sum of grad^2
 gamma = 0.99  # discount factor for reward
-resume = True  # resume from previous checkpoint?
+resume = False  # resume from previous checkpoint?
 render = False
 
 # model initialization
-D = 51*49  # input dimensionality: 80x80 grid
+#D = 51*49  # input dimensionality: 80x80 grid
 
 def build_model():
     model1 = Sequential()
-
-    model1.add(Dense(200, activation="tanh"))
-    model1.add(Dense(200, activation="tanh"))
+    model1.add(Reshape((4,), input_shape=(4, 1)))
+    model1.add(Dense(25, activation="relu"))
     model1.add(Dense(2, activation="softmax"))
-    model1.compile(optimizer=RMSprop(lr=learning_rate, decay=decay_rate, epsilon=epsilon),
-                  loss="categorical_crossentropy")
+    model1.compile(optimizer=RMSprop(lr=learning_rate, decay=decay_rate, epsilon=epsilon), metrics=["accuracy"],
+                   loss="categorical_crossentropy")
     return model1
 
 
@@ -78,11 +79,13 @@ while True:
 
     x = observation
 
-    x = x - prev_x if prev_x is not None else np.zeros(4)
-    prev_x = x
+    #x = x - prev_x if prev_x is not None else np.zeros(4)
+    #prev_x = x
 
-    aprob = model.predict(np.reshape(x, (1, 4, 1))).flatten()
+    aprob = model.predict(np.reshape(x, (1 , 4, 1))).flatten()
     prob = aprob / np.sum(aprob)
+    print(aprob)
+    print(prob)
     action = np.random.choice(2, 1, p=prob)[0]
 
     observation, reward, done, info = env.step(possible_actions[action])
@@ -111,12 +114,7 @@ while True:
 
         rewards = discount_rewards(rewards)
 
-        std = np.mean(rewards)
-
-        rewards -= np.mean(rewards)
-        rewards /= std
-
-        advantage = np.mean(rewards) - rewards
+        advantage = rewards - np.mean(rewards)
 
 
         X = np.array(states)
