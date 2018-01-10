@@ -6,7 +6,7 @@ import os
 import time
 import os.path
 import keras
-from keras.layers import Conv2D, Dense, Reshape, Flatten
+from keras.layers import Conv2D, Dense, Reshape, Flatten, Input
 from keras.models import Sequential
 from keras.optimizers import RMSprop, Adam
 from keras.models import load_model
@@ -27,10 +27,10 @@ D = 51*49  # input dimensionality: 80x80 grid
 def build_model():
     model1 = Sequential()
 
-    model1.add(Dense(10, activation="relu"))
-    model1.add(Dense(10, activation="relu"))
+    model1.add(Dense(200, activation="tanh"))
+    model1.add(Dense(200, activation="tanh"))
     model1.add(Dense(2, activation="softmax"))
-    model1.compile(optimizer=RMSprop(lr=learning_rate, decay=decay_rate, epsilon=epsilon), metrics=["accuracy"],
+    model1.compile(optimizer=RMSprop(lr=learning_rate, decay=decay_rate, epsilon=epsilon),
                   loss="categorical_crossentropy")
     return model1
 
@@ -52,6 +52,7 @@ def discount_rewards(r):
 
         running_add = running_add * gamma + r[t]
         discounted_r[t] = running_add
+
     return discounted_r
 
 
@@ -80,7 +81,7 @@ while True:
     x = x - prev_x if prev_x is not None else np.zeros(4)
     prev_x = x
 
-    aprob = model.predict_on_batch(np.reshape(x, (1, 4, 1))).flatten()
+    aprob = model.predict(np.reshape(x, (1, 4, 1))).flatten()
     prob = aprob / np.sum(aprob)
     action = np.random.choice(2, 1, p=prob)[0]
 
@@ -104,17 +105,27 @@ while True:
 
         maximum_reward_sum = 0
 
-        epdlogp = np.vstack(actions)
+        actions = np.vstack(actions)
 
         rewards = np.vstack(rewards)
 
         rewards = discount_rewards(rewards)
 
-        advantage = rewards - np.mean(rewards)
+        std = np.mean(rewards)
+
+        rewards -= np.mean(rewards)
+        rewards /= std
+
+        advantage = np.mean(rewards) - rewards
 
 
         X = np.array(states)
-        Y = np.array(epdlogp)
+        Y = np.array(actions)
+
+
+
+
+
 
 
         model.train_on_batch(np.reshape(X, (len(X), 4, 1)), Y, sample_weight=advantage.flatten())
