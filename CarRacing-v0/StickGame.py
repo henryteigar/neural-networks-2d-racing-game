@@ -29,7 +29,8 @@ render = False
 def build_model():
     model1 = Sequential()
     model1.add(Reshape((4,), input_shape=(4, 1)))
-    model1.add(Dense(25, activation="relu"))
+    model1.add(Dense(100, activation="tanh"))
+    model1.add(Dense(25, activation="tanh"))
     model1.add(Dense(2, activation="softmax"))
     model1.compile(optimizer=RMSprop(lr=learning_rate, decay=decay_rate, epsilon=epsilon), metrics=["accuracy"],
                    loss="categorical_crossentropy")
@@ -84,8 +85,7 @@ while True:
 
     aprob = model.predict(np.reshape(x, (1 , 4, 1))).flatten()
     prob = aprob / np.sum(aprob)
-    print(aprob)
-    print(prob)
+
     action = np.random.choice(2, 1, p=prob)[0]
 
     observation, reward, done, info = env.step(possible_actions[action])
