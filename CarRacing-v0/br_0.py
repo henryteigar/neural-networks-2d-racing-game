@@ -119,8 +119,9 @@ while True:
 
     # preprocess the observation, set input to network to be difference image
     cur_x = prepro(observation)
-    #print(cur_x.shape)
-    x = cur_x - prev_x if prev_x is not None else np.zeros(80*64)
+
+    x = cur_x - prev_x if prev_x is not None else np.zeros(80*64).reshape((80, 64))
+
 
     prev_x = cur_x
     #print(x.shape)
@@ -151,8 +152,8 @@ while True:
     as1 = np.zeros([2])
     as1[action] = 1
     actions.append(as1)
-    janar.append(x)
-    states.append(state)  # observation
+
+    states.append(x)  # observation
     #gradients.append(actions.astype("float32") - 1)
     #rewards.append(np.clip(reward, -1, 1))  # record reward (has to be done after we call step() to get reward for previous action)
     rewards.append(reward)
@@ -188,31 +189,35 @@ while True:
         #print(np.std(rewards))
 
         advantages = rewards - np.mean(rewards)
+        advantages = np.reshape(advantages, (len(advantages)))
 
         #rewards /= np.std(rewards)
         #gradients *= rewards
 
 
-        X = np.array(janar)
-        Y = actions
+        X = np.array(states)
+        Y = epdlogp
+
+
+        #print(X[0].shape)
+        #print(len(X[0]))
 
         print(X.shape)
-        print(X[0].shape)
-        print(len(X[0]))
-
-        #print(X.shape)
+        print(Y.shape)
+        print(advantages.shape)
 
         #print(janar[0])
         #print(np.array(janar).shape)
         #print(len(janar[0]))
+
 
         #print(np.array(Y).shape)
 
         model.train_on_batch(np.reshape(X, (len(X), 80, 64, 1)), Y, sample_weight=advantages)
 
 
-        states, probs, rewards = [], [], []  # reset array memory
-        janar = []
+        actions, probs, rewards = [], [], []  # reset array memory
+        states = []
         # compute the discounted reward backwards through time
         #discounted_epr = discount_rewards(epr)
         # standardize the rewards to be unit normal (helps control the gradient estimator variance)
