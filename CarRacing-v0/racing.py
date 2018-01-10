@@ -9,6 +9,7 @@ from keras.models import Sequential
 from keras.optimizers import RMSprop
 from keras.models import load_model
 
+
 learning_rate = 1e-4
 epsilon = 1e-5
 decay_rate = 0.90
@@ -16,8 +17,15 @@ gamma = 0.99  # factor to discount reward
 batch_size = 10
 
 resume = True
-render = True
+render = False
 
+from keras.losses import categorical_crossentropy
+import keras.backend as K
+
+def custom_loss(y_true, y_pred):
+    return categorical_crossentropy(y_true, y_pred) + 0.1 * K.sum(y_pred * K.log(y_pred), axis=-1)
+
+keras.losses.custom_loss = custom_loss
 
 def build_model():
     model = Sequential()
@@ -28,7 +36,7 @@ def build_model():
     model.add(Dense(100, activation="relu"))
     model.add(Dense(3, activation="softmax"))
     model.compile(optimizer=RMSprop(lr=learning_rate), metrics=["accuracy"],
-                  loss="categorical_crossentropy")
+                  loss=custom_loss)
     return model
 
 
@@ -126,7 +134,7 @@ while True:
 
 
         reward_sum = 0
-        if episode_number % 500 == 0:
+        if episode_number % 10 == 0:
             model.save('racing_model.h5')
 
         observation = env.reset()  # reset env
