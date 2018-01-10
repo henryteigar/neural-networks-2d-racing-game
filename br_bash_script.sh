@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --p main
+#SBATCH -p main
 #SBATCH -J br_job
 
 #SBATCH --nodes=1
