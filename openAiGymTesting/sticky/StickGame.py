@@ -1,6 +1,4 @@
-from game import CarRacingOwnImpl
-from ple import PLE
-import time
+""" Trains an agent with (stochastic) Policy Gradients on Pong. Uses OpenAI Gym. """
 import numpy as np
 import gym
 import os.path
@@ -9,27 +7,26 @@ from keras.models import Sequential
 from keras.optimizers import RMSprop
 from keras.models import load_model
 
-
-
 learning_rate = 0.001
 epsilon = 1e-5
 decay_rate = 0.90
 gamma = 0.99  # factor to discount reward
 
-resume = True
+resume = False
 render = False
 
-
+# BATCH SIZE ?
 def build_model():
-        model = Sequential()
-        model.add(Reshape((7,), input_shape=(7, 1)))
-        # Miks RELU ei tööta nii hästi
-        model.add(Dense(100, activation="tanh"))
-        model.add(Dense(25, activation="tanh"))
-        model.add(Dense(2, activation="softmax"))
-        model.compile(optimizer=RMSprop(lr=learning_rate), metrics=["accuracy"],
-                       loss="categorical_crossentropy")
-        return model
+    model = Sequential()
+    model.add(Reshape((4,), input_shape=(4, 1)))
+    # Miks RELU ei tööta nii hästi
+    model.add(Dense(100, activation="tanh"))
+    model.add(Dense(25, activation="tanh"))
+    model.add(Dense(2, activation="softmax"))
+    model.compile(optimizer=RMSprop(lr=learning_rate), metrics=["accuracy"],
+                   loss="categorical_crossentropy")
+    return model
+
 
 if resume and os.path.isfile('model_pole.h5'):
     model = load_model('model_pole.h5')
@@ -45,39 +42,33 @@ def discount_rewards(r):
         discounted_r[t] = running_add
     return discounted_r
 
-# PLE SPECIFIC
-def process_state(state):
-    return np.array(list(state.values())).flatten()
-game = CarRacingOwnImpl()
-p = PLE(game, fps=30, state_preprocessor=process_state, display_screen=render)
-p.init()
-i = 0
 
-p.act(p.NOOP)
-observation = p.getGameState()
-
+env = gym.make("CartPole-v0")
+observation = env.reset()
 observations, taken_actions, rewards = [], [], []
-
+running_reward = None
 reward_sum = 0
 episode_number = 0
 
-possible_actions = game.actions
+possible_actions = [0, 1]
 
+# For information reasons only
 last_n_scores = []
-
+last_n_average_scores = []
+prev_x = None  # Miks kasutada/mitte kasutada
 
 while True:
+    if render:
+        env.render()
 
     x = observation
-    a_probs = model.predict_on_batch(np.reshape(x, (1, 7, 1))).flatten()
+
+    a_probs = model.predict_on_batch(np.reshape(x, (1, 4, 1))).flatten() # Mis vahe on predict_on_batch() vs predict()
     prob = a_probs / np.sum(a_probs)
+
     action = np.random.choice(2, 1, p=prob)[0]
 
-    p.act(possible_actions[action])
-
-    observation = p.getGameState()
-    reward = 1
-    done = p.game_over()
+    observation, reward, done, info = env.step(possible_actions[action])
 
     taken_action = np.zeros([2])
     taken_action[action] = 1
@@ -97,54 +88,27 @@ while True:
         # ?????
         advantage = rewards - np.mean(rewards)
 
-        X = np.reshape(observations, (len(observations), 7, 1))
+        X = np.reshape(observations, (len(observations), 4, 1))
         Y = taken_actions
 
         model.train_on_batch(X, Y, sample_weight=advantage.flatten())
 
         observations, taken_actions, rewards = [], [], []  # reset array memory
 
-        if len(last_n_scores) >= 1:
-            print("Average score: " + str(np.average(last_n_scores[0])))
-            with open("history_racing.txt", "a+") as data:
-                data.write(str(episode_number) + ", " + str(np.average(last_n_scores[0])) + ", " + str(time.time()) + "\n")
+        if len(last_n_scores) >= 10:
+            print("Average score: " + str(np.average(last_n_scores)))
+            last_n_average_scores.append(np.average(last_n_scores))
             last_n_scores = []
         else:
             last_n_scores.append(reward_sum)
 
+        if len(last_n_average_scores) >= 10:
+            print("LAST TEN AVG SCORES: " + str(np.average(last_n_average_scores)))
+            last_n_average_scores = []
 
-
-
-
-
-        reward_sum = 0
-        if episode_number % 1 == 0 and resume:
-            #model.save_weights('model_pole_weights.h5')
+        if episode_number % 500 == 0:
             model.save('model_pole.h5')
 
-
-
-        p.reset_game()
-        p.act(p.NOOP)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        reward_sum = 0
+        observation = env.reset()
+        prev_x = None

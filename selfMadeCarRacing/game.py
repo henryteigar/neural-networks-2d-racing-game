@@ -13,8 +13,8 @@ class CarRacingOwnImpl(base.PyGameWrapper):
     def __init__(self, width=SCREEN_WIDTH, height=SCREEN_HEIGHT):
 
         actions = {
-            "left": pygame.K_a,
-            "right": pygame.K_d
+            0: pygame.K_a,
+            1: pygame.K_d
         }
 
         base.PyGameWrapper.__init__(self, width, height, actions=actions)
@@ -23,7 +23,7 @@ class CarRacingOwnImpl(base.PyGameWrapper):
         self.score = 0
         self.game_over_flag = False
         self.car = Car(0, SCREEN_WIDTH / 2 - CAR_WIDTH / 2, SCREEN_HEIGHT - 80)
-        self.car.speed = 1
+        self.car.speed = 5
         self.circuit = Circuit()
         self.sensors = Sensors(self.car, self.circuit)
 
@@ -51,9 +51,9 @@ class CarRacingOwnImpl(base.PyGameWrapper):
 
             if event.type == pygame.KEYDOWN:
                 key = event.key
-                if key == self.actions['left']:
+                if key == self.actions[0]:
                     self.car.wheel -= 0.5
-                if key == self.actions['right']:
+                if key == self.actions[1]:
                     self.car.wheel += 0.5
 
     def step(self, dt):

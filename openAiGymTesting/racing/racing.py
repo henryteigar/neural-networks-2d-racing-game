@@ -4,46 +4,53 @@ import gym
 import os
 import time
 import keras
-from keras.layers import Conv2D, Dense, Reshape, Flatten
-from keras.models import Sequential
+from keras.layers import Conv2D, Dense, Flatten, Input
+from keras.models import Model
 from keras.optimizers import RMSprop
 from keras.models import load_model
+from keras.losses import categorical_crossentropy
+import keras.backend as K
 
 learning_rate = 1e-4
-epsilon = 1e-5
-decay_rate = 0.90
 gamma = 0.99  # factor to discount reward
 batch_size = 10
 
 resume = True
 render = False
 
-version = "v0"
+version = "v1"
 
-if resume:
+if resume and not os.path.isdir('trainingData/' + version):
     os.makedirs('trainingData/' + version)
 
-
-from keras.losses import categorical_crossentropy
-import keras.backend as K
+A = Input(shape=(1,))
 
 def custom_loss(y_true, y_pred):
-    return categorical_crossentropy(y_true, y_pred) + 0.1 * K.sum(y_pred * K.log(y_pred), axis=-1)
+    return A * categorical_crossentropy(y_true, y_pred) + 0.1 * K.sum(y_pred * K.log(y_pred), axis=-1)
+
 
 def build_model():
-    model = Sequential()
-    model.add(Conv2D(32, 8, strides=4, padding="valid", activation="relu", input_shape=(80, 64, 1)))
-    model.add(Conv2D(64, 4, strides=2, padding="valid", activation="relu"))
-    model.add(Conv2D(64, 3, strides=1, padding="valid", activation="relu"))
-    model.add(Flatten())
-    model.add(Dense(512, activation="relu"))
-    model.add(Dense(3, activation="linear"))
-    model.compile(optimizer=RMSprop(lr=learning_rate), metrics=["accuracy"],
-                  loss=custom_loss)
+    x = Input(shape=(80, 64, 1))
+    c1 = Conv2D(32, 8, strides=4, padding="valid", activation="relu")(x)
+    c2 = Conv2D(64, 4, strides=2, padding="valid", activation="relu")(c1)
+    c3 = Conv2D(64, 3, strides=1, padding="valid", activation="relu")(c2)
+    f = Flatten()(c3)
+    h1 = Dense(512, activation="relu")(f)
+    p = Dense(4, activation="softmax")(h1)
+
+    h2 = Dense(100, activation="relu")(h1)
+    b = Dense(1)(h2)
+
+
+    model = Model(inputs=[x, A], outputs=[p, b])
+
+    model.compile(optimizer=RMSprop(lr=learning_rate),
+                  loss=[custom_loss, 'mse'], loss_weights=[1, 0.01])
     return model
 
+
 if resume and os.path.isfile('trainingData/' + version + '/racing_model.h5'):
-    model = load_model('trainingData/' + version + '/racing_model.h5')
+    model = load_model('trainingData/' + version + '/racing_model.h5', custom_objects={'custom_loss': custom_loss})
 else:
     model = build_model()
 
@@ -66,12 +73,12 @@ env = gym.make("CarRacing-v0")
 
 observation = env.reset()
 prev_x = None
-observations, taken_actions, rewards = [], [], []
+observations, taken_actions, rewards, baselines = [], [], [], []
 running_reward = None
 reward_sum = 0
 episode_number = 0
 
-possible_actions = [[0.5, 0.3, 0], [0, 0.3, 0], [-0.5, 0.3, 0]]
+possible_actions = [[1.0, 0.3, 0.0], [0.0, 1.0, 0.0], [-1.0, 0.3, 0.0], [0.0, 0.0, 0.8]]
 maximum_reward_sum = 0
 running_rewards = []
 
@@ -82,19 +89,26 @@ while True:
     x = crop_image(observation)
 
     # Lahuta frame vahe
-    x = x - prev_x if prev_x is not None else np.zeros(80 * 64).reshape((80, 64))  # ?
+    x = x - prev_x if prev_x is not None else np.zeros(80 * 64).reshape((80, 64))
 
     prev_x = x
+    A = np.zeros((1, 1))
 
-    a_probs = model.predict(np.reshape(x, (1, 80, 64, 1))).flatten()
+    a_probs, baseline = model.predict([np.reshape(x, (1, 80, 64, 1)), A])
+    a_probs = a_probs[0]
+    baseline = baseline[0]
+
+
     prob = a_probs / np.sum(a_probs)
 
-    action = np.random.choice(3, 1, p=prob)[0]
+    action = np.random.choice(4, 1, p=prob)[0]
 
     state, reward, done, info = env.step(possible_actions[action])
 
-    taken_action = np.zeros([3])
+    taken_action = np.zeros([4])
     taken_action[action] = 1
+
+    baselines.append(baseline)
 
     taken_actions.append(taken_action)
     observations.append(x)
@@ -105,7 +119,7 @@ while True:
     if reward_sum > maximum_reward_sum:
         maximum_reward_sum = reward_sum
 
-    if maximum_reward_sum - reward_sum > 5:
+    if maximum_reward_sum - reward_sum > 3:
         done = True
 
 
@@ -114,14 +128,18 @@ while True:
         maximum_reward_sum = 0
 
         if episode_number % batch_size == 0:
+
             taken_actions = np.vstack(taken_actions)
             rewards = np.vstack(rewards)
-            rewards = discount_rewards(rewards)
-            advantages = rewards - np.mean(rewards)
+            R = discount_rewards(rewards)
+
             X = np.reshape(observations, (len(observations), 80, 64, 1))
             Y = taken_actions
-            model.train_on_batch(X, Y, sample_weight=advantages.flatten())
-            observations, taken_actions, rewards = [], [], []
+            b = np.array(baselines)
+            A = (R - b)
+
+            model.train_on_batch([X, A], [Y, R])
+            observations, taken_actions, rewards, baselines = [], [], [], []
 
         running_rewards.append(reward_sum)
 

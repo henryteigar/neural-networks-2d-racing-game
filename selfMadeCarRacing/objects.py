@@ -12,7 +12,7 @@ class Car(pygame.sprite.Sprite):
         self.dir = start_dir
         self.speed = 0
         self.wheel = 0  # -1 to 1
-        self.image = pygame.image.load(os.path.join("images", "car_small.png"))
+        self.image = pygame.image.load(os.path.join("images", "car.png"))
         self.img = None
         self.img_mask = None
         self.img_rect = None
@@ -31,7 +31,7 @@ class Car(pygame.sprite.Sprite):
             self.wheel = -self.max_wheel_pos
 
 
-        self.dir -= self.wheel * 5 * self.speed / 33 * dt
+        self.dir -= self.wheel * self.speed / 33 * dt
         self.x += math.cos(math.radians(self.dir)) * self.speed / 33 * dt
         self.y -= math.sin(math.radians(self.dir)) * self.speed / 33 * dt
 
@@ -143,7 +143,7 @@ class Sensors:
 
 class Circuit:
     def __init__(self):
-        self.img = pygame.image.load(os.path.join("images", "circuit1_small.png"))
+        self.img = pygame.image.load(os.path.join("images", "circuit1.png"))
         self.img_mask = None
         self.img_rect = None
 
@@ -161,3 +161,4 @@ def rot_center(image, angle):
     rot_rect.center = rot_image.get_rect().center
     rot_image = rot_image.subsurface(rot_rect).copy()
     return rot_image
+
