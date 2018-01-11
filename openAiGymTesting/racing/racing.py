@@ -20,6 +20,10 @@ render = False
 
 version = "v0"
 
+if resume:
+    os.makedirs('trainingData/' + version)
+
+
 from keras.losses import categorical_crossentropy
 import keras.backend as K
 
