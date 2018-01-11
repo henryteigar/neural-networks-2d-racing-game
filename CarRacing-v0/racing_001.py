@@ -23,7 +23,7 @@ from keras.losses import categorical_crossentropy
 import keras.backend as K
 
 def custom_loss(y_true, y_pred):
-    return categorical_crossentropy(y_true, y_pred) + 0.1 * K.sum(y_pred * K.log(y_pred), axis=-1)
+    return categorical_crossentropy(y_true, y_pred) + 0.01 * K.sum(y_pred * K.log(y_pred), axis=-1)
 
 keras.losses.custom_loss = custom_loss
 
@@ -40,8 +40,8 @@ def build_model():
     return model
 
 
-if resume and os.path.isfile('racing_model_01.h5'):
-    model = load_model('racing_model_01.h5')
+if resume and os.path.isfile('racing_model_001.h5'):
+    model = load_model('racing_model_001.h5')
 else:
     model = build_model()
 
@@ -124,7 +124,7 @@ while True:
         running_rewards.append(reward_sum)
 
         if (len(running_rewards) >= 5):
-            with open("history_racing_01.txt", "a+") as data:
+            with open("history_racing_001.txt", "a+") as data:
                 data.write(str(episode_number) + ", " + str(np.average(running_rewards)) + ", " + str(time.time()) + "\n")
             running_rewards = []
 
@@ -135,7 +135,7 @@ while True:
 
         reward_sum = 0
         if episode_number % 10 == 0:
-            model.save('racing_model_01.h5')
+            model.save('racing_model_001.h5')
 
         observation = env.reset()  # reset env
         prev_x = None
