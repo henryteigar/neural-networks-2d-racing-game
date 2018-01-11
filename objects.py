@@ -3,40 +3,47 @@ import math
 from conf import *
 import os
 
-class Car:
-    def __init__(self, screen, start_dir, start_x, start_y):
+class Car(pygame.sprite.Sprite):
+    def __init__(self, start_dir, start_x, start_y):
         self.start_x = start_x
         self.start_y = start_y
         self.x = self.start_x
         self.y = self.start_y
         self.dir = start_dir
-        self.screen = screen
         self.speed = 0
         self.wheel = 0  # -1 to 1
-        self.image = pygame.image.load(os.path.join("images", "car.png"))
+        self.image = pygame.image.load(os.path.join("images", "car_small.png"))
         self.img = None
         self.img_mask = None
         self.img_rect = None
+        self.max_wheel_pos = 1
+        pygame.sprite.Sprite.__init__(self)
 
     def reset(self):
         self.dir = 0
         self.x = self.start_x
         self.y = self.start_y
 
-    def update_pos(self):
-        self.dir -= self.wheel * self.speed
-        self.x += math.cos(math.radians(self.dir)) * self.speed
-        self.y -= math.sin(math.radians(self.dir)) * self.speed
+    def update_pos(self, dt):
+        if (self.wheel > self.max_wheel_pos):
+            self.wheel = self.max_wheel_pos
+        elif (self.wheel < -self.max_wheel_pos):
+            self.wheel = -self.max_wheel_pos
 
-    def blit(self):
-        self.update_pos()
+
+        self.dir -= self.wheel * 5 * self.speed / 33 * dt
+        self.x += math.cos(math.radians(self.dir)) * self.speed / 33 * dt
+        self.y -= math.sin(math.radians(self.dir)) * self.speed / 33 * dt
+
+    def blit(self, screen, dt):
         self.img = rot_center(self.image, self.dir)
         self.img_mask = pygame.mask.from_surface(self.img)
         self.img_rect = self.img.get_rect()
-        self.screen.blit(self.img, (self.x, self.y))
+        screen.blit(self.img, (self.x, self.y))
+        self.update_pos(dt)
 
 class Info:
-    def __init__(self, screen, car, sensors):
+    def __init__(self, car, sensors, screen=None):
         self.screen = screen
         self.car = car
         self.font = pygame.font.SysFont("monospace", 18)
@@ -48,19 +55,19 @@ class Info:
         wheel_label = self.font.render("Wheel: " + str(self.car.wheel), 1, (255, 255, 255))
         direction_label = self.font.render("Direction: " + str(self.car.dir), 1, (255, 255, 255))
         crashes_label = self.font.render("Crashes: " + str(self.crashes), 1, (255, 0, 0))
-        self.screen.blit(speed_label, (SCREEN_WIDTH - 180, 20))
-        self.screen.blit(wheel_label, (SCREEN_WIDTH - 180, 40))
-        self.screen.blit(direction_label, (SCREEN_WIDTH - 180, 60))
-        self.screen.blit(crashes_label, (SCREEN_WIDTH - 180, 80))
+        #self.screen.blit(speed_label, (SCREEN_WIDTH - 180, 20))
+        #self.screen.blit(wheel_label, (SCREEN_WIDTH - 180, 40))
+        #self.screen.blit(direction_label, (SCREEN_WIDTH - 180, 60))
+        #self.screen.blit(crashes_label, (SCREEN_WIDTH - 180, 80))
 
         for i, sensor in enumerate(self.sensors):
             label_txt = "Sensor{0}: {1}".format(i, sensor.measurement)
             label = self.font.render(label_txt, 1, WHITE)
-            self.screen.blit(label, (20, 20 + i*20))
+            #self.screen.blit(label, (20, 20 + i*20))
 
 
 class Sensor:
-    def __init__(self, screen, deg, car, circuit):
+    def __init__(self, deg, car, circuit, screen=None):
         self.screen = screen
         self.deg = deg
         self.car = car
@@ -111,7 +118,7 @@ class Sensor:
         pygame.draw.line(self.screen, (int(red), int(green), 0), (self.car_center_x, self.car_center_y), (self.deg_x, self.deg_y), 2)
 
 class Sensors:
-    def __init__(self, screen, car, circuit):
+    def __init__(self, car, circuit, screen=None):
         self.screen = screen
         self.car = car
         self.circuit = circuit
@@ -125,26 +132,25 @@ class Sensors:
         start_angle = -angle_range // 2
 
         for deg in range(start_angle + angle_range, start_angle - 1, -self.density):
-            sensors.append(Sensor(self.screen, deg, self.car, self.circuit))
+            sensors.append(Sensor(deg, self.car, self.circuit))
         return sensors
 
     def blit(self):
         for sensor in self.sensors:
             sensor.measure()
-            sensor.blit()
+
 
 
 class Circuit:
-    def __init__(self, screen):
-        self.screen = screen
-        self.img = pygame.image.load(os.path.join("images", "circuit1.png"))
+    def __init__(self):
+        self.img = pygame.image.load(os.path.join("images", "circuit1_small.png"))
         self.img_mask = None
         self.img_rect = None
 
-    def blit(self):
+    def blit(self, screen):
         self.img_mask = pygame.mask.from_surface(self.img)
         self.img_rect = self.img.get_rect()
-        self.screen.blit(self.img, (0, 0))
+        screen.blit(self.img, (0, 0))
 
 
 # Rotate an image while keeping its center and size

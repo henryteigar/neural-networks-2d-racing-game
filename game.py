@@ -1,78 +1,90 @@
 import pygame
 from objects import *
 from conf import *
+from ple.games import base
+import sys
 
-pygame.init()
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption(CAPTION)
-clock = pygame.time.Clock()
-game_ended = False
-
-
-car = Car(screen, 0, SCREEN_WIDTH / 2 - CAR_WIDTH / 2, SCREEN_HEIGHT - 80)
-circuit = Circuit(screen)
-sensors = Sensors(screen, car, circuit)
-info = Info(screen, car, sensors.sensors)
+#pygame.display.set_caption(CAPTION)
+#clock = pygame.time.Clock()
+#game_ended = False
 
 
-def detect_collision():
-    if circuit.img_mask.overlap(car.img_mask, (int(car.x), int(car.y))) is not None:
-        car.reset()
-        info.crashes += 1
+class CarRacingOwnImpl(base.PyGameWrapper):
+    def __init__(self, width=SCREEN_WIDTH, height=SCREEN_HEIGHT):
 
-speed = 3
-car.speed = speed
+        actions = {
+            "left": pygame.K_a,
+            "right": pygame.K_d
+        }
 
-while not game_ended:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            game_ended = True
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_w:
-                car.speed = speed
-            if event.key == pygame.K_a:
-                car.wheel += -1
-            if event.key == pygame.K_d:
-                car.wheel += 1
-            if event.key == pygame.K_r:
-                info.crashes = 0
-                car.reset()
-            if event.key == pygame.K_1:
-                speed = 1
-                car.speed = speed
-            if event.key == pygame.K_2:
-                speed = 2
-                car.speed = speed
-            if event.key == pygame.K_3:
-                speed = 3
-                car.speed = speed
-            if event.key == pygame.K_4:
-                speed = 4
-                car.speed = speed
-            if event.key == pygame.K_5:
-                speed = 5
-                car.speed = speed
-            if event.key == pygame.K_6:
-                speed = 6
-                car.speed = speed
-            if event.key == pygame.K_0:
-                speed = 0
-                car.speed = speed
+        base.PyGameWrapper.__init__(self, width, height, actions=actions)
 
-        if event.type == pygame.KEYUP:
-            if event.key == pygame.K_w:
-                car.speed = 0
-            if event.key == pygame.K_a:
-                car.wheel -= -1
-            if event.key == pygame.K_d:
-                car.wheel -= 1
+    def init(self):
+        self.score = 0
+        self.game_over_flag = False
+        self.car = Car(0, SCREEN_WIDTH / 2 - CAR_WIDTH / 2, SCREEN_HEIGHT - 80)
+        self.car.speed = 1
+        self.circuit = Circuit()
+        self.sensors = Sensors(self.car, self.circuit)
 
-    screen.fill(WHITE)
-    circuit.blit()
-    car.blit()
-    info.blit()
-    sensors.blit()
-    detect_collision()
+    def getScore(self):
+        return self.score
 
-    pygame.display.update()
-    clock.tick(60)
+    def getGameState(self):
+        measurements = []
+        for sensor in self.sensors.sensors:
+            measurements.append(sensor.measurement)
+
+        state = {
+            "sensors": measurements
+        }
+        return state
+
+    def game_over(self):
+        return self.game_over_flag
+
+    def _handle_player_events(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            if event.type == pygame.KEYDOWN:
+                key = event.key
+                if key == self.actions['left']:
+                    self.car.wheel -= 0.5
+                if key == self.actions['right']:
+                    self.car.wheel += 0.5
+
+    def step(self, dt):
+        self.screen.fill(WHITE)
+        self._handle_player_events()
+        self.score += self.rewards["tick"]
+        self.car.blit(self.screen, dt)
+        self.circuit.blit(self.screen)
+
+        for sensor in self.sensors.sensors:
+            sensor.measure()
+
+        if self.circuit.img_mask.overlap(self.car.img_mask, (int(self.car.x), int(self.car.y))) is not None:
+            self.game_over_flag = True
+        else:
+            self.score += 1
+
+
+
+if __name__ == "__main__":
+
+    pygame.init()
+    game = CarRacingOwnImpl()
+    game.screen = pygame.display.set_mode(game.getScreenDims(), 0, 32)
+    game.clock = pygame.time.Clock()
+    game.init()
+
+    while True:
+        dt = game.clock.tick_busy_loop(30)
+        if game.game_over():
+            game.reset()
+
+        game.step(dt)
+        pygame.display.update()
